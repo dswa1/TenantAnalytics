@@ -1,0 +1,2246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M365 Tenant Manager - Enterprise Security & Analytics</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #00ff88;
+            --accent-dim: #00ff8833;
+            --dark-bg: #0a0e14;
+            --card-bg: #12171f;
+            --border: #1e2530;
+            --text-primary: #e8eaed;
+            --text-secondary: #9ca3af;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --success: #00ff88;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 255, 136, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(0, 136, 255, 0.06) 0%, transparent 40%),
+                linear-gradient(180deg, #0a0e14 0%, #060911 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            padding: 2rem 3rem;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            background: rgba(18, 23, 31, 0.6);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent) 0%, #00ccff 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--dark-bg);
+            font-size: 1.2rem;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem;
+        }
+
+        /* Welcome Screen */
+        .welcome-screen {
+            text-align: center;
+            padding: 6rem 2rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-screen h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--accent) 0%, #00ccff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-screen p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            line-height: 1.6;
+        }
+
+        /* Onboarding Steps */
+        .onboarding-container {
+            max-width: 900px;
+            margin: 0 auto;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .step.active .step-number {
+            background: var(--accent);
+            color: var(--dark-bg);
+        }
+
+        .onboarding-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .onboarding-card h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .onboarding-card p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        /* Storage Options */
+        .storage-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .storage-option {
+            padding: 2rem;
+            background: var(--dark-bg);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .storage-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--accent-dim) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .storage-option:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+        }
+
+        .storage-option:hover::before {
+            opacity: 1;
+        }
+
+        .storage-option.selected {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .storage-option.selected::before {
+            opacity: 1;
+        }
+
+        .storage-option-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .storage-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+
+        .storage-option h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .storage-option p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .storage-features {
+            list-style: none;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .storage-features li {
+            padding: 0.3rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .storage-features li::before {
+            content: '→';
+            color: var(--accent);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--dark-bg);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #00ff99;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+
+        /* Azure Setup Instructions */
+        .setup-instructions {
+            background: var(--dark-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .setup-instructions h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .instruction-step {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+            position: relative;
+        }
+
+        .instruction-step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: var(--dark-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .instruction-step h4 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .instruction-step p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 0.75rem;
+        }
+
+        .code-block {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            overflow-x: auto;
+            margin-top: 0.5rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .permissions-list {
+            background: var(--dark-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .permissions-list h4 {
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .permission-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .permission-item:last-child {
+            border-bottom: none;
+        }
+
+        .permission-name {
+            font-weight: 600;
+        }
+
+        .permission-type {
+            padding: 0.25rem 0.75rem;
+            background: var(--accent-dim);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--accent);
+        }
+
+        /* Dashboard Layout */
+        .dashboard {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .dashboard-nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .nav-tab:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .nav-tab.active {
+            background: var(--accent);
+            color: var(--dark-bg);
+            border-color: var(--accent);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--danger);
+        }
+
+        /* Data Table */
+        .data-table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .icon-btn {
+            padding: 0.5rem 1rem;
+            background: var(--dark-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table thead {
+            background: var(--dark-bg);
+        }
+
+        .data-table th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .data-table td {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .data-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--dark-bg);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--success);
+        }
+
+        .status-badge.inactive {
+            background: rgba(255, 59, 48, 0.2);
+            color: var(--danger);
+        }
+
+        .status-badge.warning {
+            background: rgba(255, 149, 0, 0.2);
+            color: var(--warning);
+        }
+
+        .action-btn {
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .action-btn.danger:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--dark-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .alert.success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .alert.warning {
+            background: rgba(255, 149, 0, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .alert.error {
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .alert.info {
+            background: rgba(0, 204, 255, 0.1);
+            border: 1px solid #00ccff;
+            color: #00ccff;
+        }
+
+        /* Consent URL Display */
+        .consent-url-container {
+            background: var(--dark-bg);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .consent-url-container h4 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .consent-url-box {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .consent-url {
+            flex: 1;
+            padding: 0.75rem;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-family: 'DM Mono', monospace;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--accent);
+            color: var(--dark-bg);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: #00ff99;
+            transform: translateY(-2px);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1.5rem;
+            }
+
+            .main-content {
+                padding: 1.5rem;
+            }
+
+            .welcome-screen h1 {
+                font-size: 2.5rem;
+            }
+
+            .storage-options {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .consent-url-box {
+                flex-direction: column;
+            }
+
+            .copy-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Microsoft Graph API Configuration
+        const REQUIRED_PERMISSIONS = [
+            'User.Read.All',
+            'Directory.Read.All',
+            'Reports.Read.All',
+            'AuditLog.Read.All',
+            'Policy.Read.All',
+            'Device.Read.All',
+            'Mail.Read'
+        ];
+
+        // Backend API Configuration
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        // Microsoft Graph API Helper (using backend proxy)
+        class GraphAPIClient {
+            constructor(tenantId, clientId, clientSecret) {
+                this.tenantId = tenantId;
+                this.clientId = clientId;
+                this.clientSecret = clientSecret;
+                this.configured = false;
+            }
+
+            async configure() {
+                // Send config to backend server
+                try {
+                    const response = await fetch(`${API_BASE_URL}/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            tenantId: this.tenantId,
+                            clientId: this.clientId,
+                            clientSecret: this.clientSecret
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to configure backend');
+                    }
+
+                    this.configured = true;
+                    return true;
+                } catch (error) {
+                    console.error('Error configuring backend:', error);
+                    throw new Error(`Backend configuration failed: ${error.message}. Make sure the backend server is running on http://localhost:3000`);
+                }
+            }
+
+            async makeGraphRequest(endpoint) {
+                if (!this.configured) {
+                    await this.configure();
+                }
+
+                // Remove leading slash if present
+                const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
+                const response = await fetch(`${API_BASE_URL}/graph/${cleanEndpoint}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMsg = errorData.error?.message || errorData.error || `${response.status} ${response.statusText}`;
+
+                    if (response.status === 403) {
+                        throw new Error(`Permission denied: ${errorMsg}. Make sure you've granted admin consent for all required Application permissions in Azure Portal.`);
+                    }
+
+                    if (response.status === 401) {
+                        throw new Error(`Authentication failed: ${errorMsg}. Check your Client Secret and ensure it's still valid.`);
+                    }
+
+                    throw new Error(`Graph API error: ${errorMsg}`);
+                }
+
+                return await response.json();
+            }
+
+            async getUsers() {
+                return await this.makeGraphRequest('/users?$select=id,displayName,mail,userPrincipalName,assignedLicenses,signInActivity,accountEnabled&$top=999');
+            }
+
+            async getLicenses() {
+                return await this.makeGraphRequest('/subscribedSkus');
+            }
+
+            async getSecurityScore() {
+                return await this.makeGraphRequest('/security/secureScores?$top=1');
+            }
+
+            async getRiskyUsers() {
+                return await this.makeGraphRequest('/identityProtection/riskyUsers');
+            }
+
+            async getMailboxSettings(userPrincipalName) {
+                return await this.makeGraphRequest(`/users/${userPrincipalName}/mailboxSettings`);
+            }
+
+            async getMailboxUsage() {
+                // Get mailbox usage report from the last 7 days
+                return await this.makeGraphRequest('/reports/getMailboxUsageDetail(period=\'D7\')');
+            }
+        }
+
+        // Generate Admin Consent URL
+        function generateAdminConsentUrl(tenantId, clientId, redirectUri) {
+            const state = Math.random().toString(36).substring(7);
+
+            // Build scope string with all required permissions
+            // For admin consent, we need to specify the permissions we want to grant
+            const scopePermissions = REQUIRED_PERMISSIONS.map(p => `https://graph.microsoft.com/${p}`).join(' ');
+
+            const params = new URLSearchParams({
+                client_id: clientId,
+                redirect_uri: redirectUri,
+                state: state,
+                scope: scopePermissions
+            });
+
+            return `https://login.microsoftonline.com/${tenantId}/v2.0/adminconsent?${params.toString()}`;
+        }
+
+        // Main App Component
+        function App() {
+            const [currentView, setCurrentView] = useState('welcome');
+            const [onboardingStep, setOnboardingStep] = useState(1);
+            const [storageChoice, setStorageChoice] = useState(null);
+            const [azureConfig, setAzureConfig] = useState(() => {
+                // Try to load from localStorage
+                const saved = localStorage.getItem('m365-azure-config');
+                if (saved) {
+                    try {
+                        return JSON.parse(saved);
+                    } catch (e) {
+                        console.error('Error parsing saved config:', e);
+                    }
+                }
+                return {
+                    tenantId: '',
+                    clientId: '',
+                    clientSecret: '',
+                    redirectUri: 'http://localhost:8000/m365-tenant-manager-v2.html'
+                };
+            });
+            const [consentUrl, setConsentUrl] = useState('');
+            const [consentGranted, setConsentGranted] = useState(false);
+            const [userEmail, setUserEmail] = useState('admin@contoso.com');
+            const [dashboardTab, setDashboardTab] = useState('overview');
+            const [graphClient, setGraphClient] = useState(null);
+            const [realUsers, setRealUsers] = useState([]);
+            const [realStats, setRealStats] = useState(null);
+            const [realRiskyUsers, setRealRiskyUsers] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [shouldAutoFetch, setShouldAutoFetch] = useState(false);
+
+            // Save Azure config to localStorage whenever it changes
+            useEffect(() => {
+                if (azureConfig.tenantId || azureConfig.clientId || azureConfig.clientSecret) {
+                    localStorage.setItem('m365-azure-config', JSON.stringify(azureConfig));
+                }
+            }, [azureConfig]);
+
+            // Check if user has already configured the app and go to dashboard
+            useEffect(() => {
+                const saved = localStorage.getItem('m365-azure-config');
+                if (saved) {
+                    try {
+                        const config = JSON.parse(saved);
+                        if (config.tenantId && config.clientId && config.clientSecret) {
+                            // User has already configured, go to dashboard
+                            setCurrentView('dashboard');
+                            setStorageChoice('tenant'); // Set a default storage choice
+                            setShouldAutoFetch(true); // Trigger auto-fetch
+                        }
+                    } catch (e) {
+                        console.error('Error checking saved config:', e);
+                    }
+                }
+            }, []); // Run only once on mount
+
+            // Check for admin consent callback
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const adminConsent = urlParams.get('admin_consent');
+                const tenant = urlParams.get('tenant');
+                const error = urlParams.get('error');
+                const errorDescription = urlParams.get('error_description');
+
+                if (adminConsent === 'True') {
+                    setConsentGranted(true);
+                    setCurrentView('onboarding');
+                    setOnboardingStep(3);
+                    
+                    // Store tenant for verification
+                    if (tenant && !azureConfig.tenantId) {
+                        setAzureConfig(prev => ({...prev, tenantId: tenant}));
+                    }
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        alert('✅ Admin consent granted successfully! All permissions have been configured.\n\nClick "Complete Setup" to continue.');
+                    }, 500);
+                    
+                    // Clean up URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else if (error) {
+                    alert(`Consent Error: ${error}\n${errorDescription || ''}`);
+                    setCurrentView('onboarding');
+                    setOnboardingStep(3);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }, []);
+
+            const mockStats = {
+                totalUsers: 247,
+                licensedUsers: 189,
+                activeUsers: 156,
+                unusedLicenses: 58,
+                securityScore: 72,
+                riskyUsers: 12,
+                inactiveMailboxes: 23,
+                storageUsed: '2.4 TB'
+            };
+
+            const mockUsers = [
+                { id: 1, name: 'Sarah Johnson', email: 's.johnson@contoso.com', licensed: true, lastActive: '2 hours ago', status: 'active', mailboxSize: '4.2 GB', riskLevel: 'low' },
+                { id: 2, name: 'Michael Chen', email: 'm.chen@contoso.com', licensed: true, lastActive: '1 day ago', status: 'active', mailboxSize: '8.9 GB', riskLevel: 'low' },
+                { id: 3, name: 'Emily Rodriguez', email: 'e.rodriguez@contoso.com', licensed: true, lastActive: '3 hours ago', status: 'active', mailboxSize: '5.7 GB', riskLevel: 'medium' },
+                { id: 4, name: 'David Kim', email: 'd.kim@contoso.com', licensed: false, lastActive: '45 days ago', status: 'inactive', mailboxSize: '1.2 GB', riskLevel: 'low' },
+                { id: 5, name: 'Jessica Martinez', email: 'j.martinez@contoso.com', licensed: true, lastActive: '5 hours ago', status: 'active', mailboxSize: '12.3 GB', riskLevel: 'high' }
+            ];
+
+            const handleStorageSelect = (choice) => {
+                setStorageChoice(choice);
+            };
+
+            const handleNextStep = () => {
+                if (onboardingStep === 1 && storageChoice) {
+                    setOnboardingStep(2);
+                } else if (onboardingStep === 2 && azureConfig.tenantId && azureConfig.clientId && azureConfig.clientSecret) {
+                    // Generate admin consent URL and move to step 3
+                    const adminConsentUrl = generateAdminConsentUrl(
+                        azureConfig.tenantId,
+                        azureConfig.clientId,
+                        azureConfig.redirectUri
+                    );
+                    setConsentUrl(adminConsentUrl);
+                    setOnboardingStep(3);
+                } else if (onboardingStep === 3 && consentGranted) {
+                    setCurrentView('dashboard');
+                }
+            };
+
+            const handleGetStarted = () => {
+                setCurrentView('onboarding');
+            };
+
+            const handleGrantConsent = () => {
+                if (consentUrl) {
+                    window.location.href = consentUrl;
+                }
+            };
+
+            const fetchTenantData = async () => {
+                if (!azureConfig.tenantId || !azureConfig.clientId || !azureConfig.clientSecret) {
+                    setError('Missing Azure configuration');
+                    return;
+                }
+
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const client = new GraphAPIClient(
+                        azureConfig.tenantId,
+                        azureConfig.clientId,
+                        azureConfig.clientSecret
+                    );
+                    setGraphClient(client);
+
+                    // Fetch users
+                    const usersData = await client.getUsers();
+
+                    // Fetch mailbox usage data
+                    let mailboxUsageMap = {};
+                    try {
+                        const mailboxUsageData = await client.getMailboxUsage();
+                        // Parse CSV response
+                        if (mailboxUsageData) {
+                            const lines = mailboxUsageData.split('\n');
+                            const headers = lines[0].split(',');
+                            const userPrincipalNameIndex = headers.findIndex(h => h.includes('User Principal Name'));
+                            const storageSizeIndex = headers.findIndex(h => h.includes('Storage Used'));
+
+                            for (let i = 1; i < lines.length; i++) {
+                                if (lines[i].trim()) {
+                                    const values = lines[i].split(',');
+                                    const upn = values[userPrincipalNameIndex]?.replace(/"/g, '');
+                                    const size = values[storageSizeIndex]?.replace(/"/g, '');
+                                    if (upn && size) {
+                                        // Convert bytes to GB
+                                        const sizeInGB = (parseInt(size) / (1024 * 1024 * 1024)).toFixed(2);
+                                        mailboxUsageMap[upn] = `${sizeInGB} GB`;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch mailbox usage:', e);
+                    }
+
+                    const users = usersData.value.map(user => ({
+                        id: user.id,
+                        name: user.displayName,
+                        email: user.mail || user.userPrincipalName,
+                        licensed: user.assignedLicenses && user.assignedLicenses.length > 0,
+                        lastActive: user.signInActivity?.lastSignInDateTime
+                            ? new Date(user.signInActivity.lastSignInDateTime).toLocaleDateString()
+                            : 'Never',
+                        status: user.accountEnabled ? 'active' : 'inactive',
+                        mailboxSize: mailboxUsageMap[user.userPrincipalName] || 'N/A',
+                        riskLevel: 'low'
+                    }));
+                    setRealUsers(users);
+
+                    // Calculate stats
+                    const totalUsers = users.length;
+                    const licensedUsers = users.filter(u => u.licensed).length;
+                    const activeUsers = users.filter(u => u.status === 'active').length;
+
+                    // Fetch licenses
+                    const licensesData = await client.getLicenses();
+                    const totalLicenses = licensesData.value.reduce((sum, sku) => sum + sku.prepaidUnits.enabled, 0);
+                    const unusedLicenses = totalLicenses - licensedUsers;
+
+                    // Try to fetch security score (may fail if not available)
+                    let securityScore = 0;
+                    try {
+                        const securityData = await client.getSecurityScore();
+                        if (securityData.value && securityData.value.length > 0) {
+                            securityScore = Math.round(securityData.value[0].currentScore);
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch security score:', e);
+                    }
+
+                    // Try to fetch risky users
+                    let riskyUsers = 0;
+                    let riskyUsersList = [];
+                    try {
+                        const riskyData = await client.getRiskyUsers();
+                        if (riskyData.value) {
+                            riskyUsers = riskyData.value.length;
+                            riskyUsersList = riskyData.value.map(user => ({
+                                id: user.id,
+                                name: user.userDisplayName || 'Unknown',
+                                email: user.userPrincipalName,
+                                riskLevel: user.riskLevel || 'Unknown',
+                                riskState: user.riskState || 'Unknown',
+                                riskReason: user.riskDetail || 'No details available',
+                                lastRiskySignIn: user.riskLastUpdatedDateTime
+                                    ? new Date(user.riskLastUpdatedDateTime).toLocaleString()
+                                    : 'Unknown'
+                            }));
+                            setRealRiskyUsers(riskyUsersList);
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch risky users:', e);
+                    }
+
+                    setRealStats({
+                        totalUsers,
+                        licensedUsers,
+                        activeUsers,
+                        unusedLicenses,
+                        securityScore,
+                        riskyUsers,
+                        inactiveMailboxes: totalUsers - activeUsers,
+                        storageUsed: 'N/A'
+                    });
+
+                    setLoading(false);
+                } catch (err) {
+                    console.error('Error fetching tenant data:', err);
+                    setError(err.message);
+                    setLoading(false);
+                }
+            };
+
+            // Auto-fetch data when shouldAutoFetch is true
+            useEffect(() => {
+                if (shouldAutoFetch && currentView === 'dashboard') {
+                    fetchTenantData();
+                    setShouldAutoFetch(false); // Reset flag after fetching
+                }
+            }, [shouldAutoFetch, currentView]);
+
+            return (
+                <div className="app-container">
+                    <Header userEmail={userEmail} currentView={currentView} />
+                    
+                    <main className="main-content">
+                        {currentView === 'welcome' && (
+                            <WelcomeScreen onGetStarted={handleGetStarted} />
+                        )}
+                        
+                        {currentView === 'onboarding' && (
+                            <OnboardingFlow 
+                                step={onboardingStep}
+                                storageChoice={storageChoice}
+                                onStorageSelect={handleStorageSelect}
+                                onNext={handleNextStep}
+                                onBack={() => onboardingStep > 1 ? setOnboardingStep(onboardingStep - 1) : setCurrentView('welcome')}
+                                azureConfig={azureConfig}
+                                setAzureConfig={setAzureConfig}
+                                consentUrl={consentUrl}
+                                consentGranted={consentGranted}
+                                onGrantConsent={handleGrantConsent}
+                            />
+                        )}
+                        
+                        {currentView === 'dashboard' && (
+                            <Dashboard
+                                tab={dashboardTab}
+                                setTab={setDashboardTab}
+                                stats={realStats || mockStats}
+                                users={realUsers.length > 0 ? realUsers : mockUsers}
+                                riskyUsers={realRiskyUsers}
+                                storageChoice={storageChoice}
+                                onFetchData={fetchTenantData}
+                                loading={loading}
+                                error={error}
+                            />
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        // Header Component
+        function Header({ userEmail, currentView }) {
+            return (
+                <header className="header">
+                    <div className="header-content">
+                        <div className="logo">
+                            <div className="logo-icon">M</div>
+                            <span>M365 Tenant Manager</span>
+                        </div>
+                        {currentView === 'dashboard' && (
+                            <div className="user-badge">
+                                <div className="status-dot"></div>
+                                <span>{userEmail}</span>
+                            </div>
+                        )}
+                    </div>
+                </header>
+            );
+        }
+
+        // Welcome Screen Component
+        function WelcomeScreen({ onGetStarted }) {
+            return (
+                <div className="welcome-screen">
+                    <h1>Enterprise M365<br />Tenant Management</h1>
+                    <p>
+                        Comprehensive security analytics, license optimization, and automated 
+                        remediation for your Microsoft 365 environment. Powered by Microsoft Graph API.
+                    </p>
+                    <button className="btn btn-primary" onClick={onGetStarted}>
+                        Get Started
+                    </button>
+                </div>
+            );
+        }
+
+        // Onboarding Flow Component
+        function OnboardingFlow({ step, storageChoice, onStorageSelect, onNext, onBack, azureConfig, setAzureConfig, consentUrl, consentGranted, onGrantConsent }) {
+            return (
+                <div className="onboarding-container">
+                    <div className="step-indicator">
+                        <div className={`step ${step === 1 ? 'active' : ''}`}>
+                            <div className="step-number">1</div>
+                            <span>Storage</span>
+                        </div>
+                        <div className={`step ${step === 2 ? 'active' : ''}`}>
+                            <div className="step-number">2</div>
+                            <span>Azure App</span>
+                        </div>
+                        <div className={`step ${step === 3 ? 'active' : ''}`}>
+                            <div className="step-number">3</div>
+                            <span>Permissions</span>
+                        </div>
+                    </div>
+
+                    {step === 1 && (
+                        <StorageSelection 
+                            storageChoice={storageChoice}
+                            onStorageSelect={onStorageSelect}
+                        />
+                    )}
+
+                    {step === 2 && (
+                        <AzureAppSetup 
+                            azureConfig={azureConfig}
+                            setAzureConfig={setAzureConfig}
+                        />
+                    )}
+
+                    {step === 3 && (
+                        <PermissionsConsent 
+                            consentUrl={consentUrl}
+                            consentGranted={consentGranted}
+                            onGrantConsent={onGrantConsent}
+                            storageChoice={storageChoice}
+                        />
+                    )}
+
+                    <div className="button-group">
+                        <button className="btn btn-secondary" onClick={onBack}>
+                            Back
+                        </button>
+                        <button 
+                            className="btn btn-primary" 
+                            onClick={onNext}
+                            disabled={
+                                (step === 1 && !storageChoice) ||
+                                (step === 2 && (!azureConfig.tenantId || !azureConfig.clientId || !azureConfig.clientSecret)) ||
+                                (step === 3 && !consentGranted)
+                            }
+                        >
+                            {step === 3 ? 'Complete Setup' : 'Continue'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Storage Selection Component
+        function StorageSelection({ storageChoice, onStorageSelect }) {
+            return (
+                <div className="onboarding-card">
+                    <h2>Choose Your Data Storage</h2>
+                    <p>
+                        Select where you want to store your M365 analytics and historical data. 
+                        You can change this later in settings.
+                    </p>
+
+                    <div className="storage-options">
+                        <div 
+                            className={`storage-option ${storageChoice === 'tenant' ? 'selected' : ''}`}
+                            onClick={() => onStorageSelect('tenant')}
+                        >
+                            <div className="storage-option-content">
+                                <div className="storage-icon">🏢</div>
+                                <h3>Your M365 Tenant</h3>
+                                <p>Store data within your Microsoft 365 environment</p>
+                                <ul className="storage-features">
+                                    <li>Data stays in your tenant</li>
+                                    <li>No external dependencies</li>
+                                    <li>Use SharePoint/Azure Storage</li>
+                                    <li>Full compliance control</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div 
+                            className={`storage-option ${storageChoice === 'supabase' ? 'selected' : ''}`}
+                            onClick={() => onStorageSelect('supabase')}
+                        >
+                            <div className="storage-option-content">
+                                <div className="storage-icon">⚡</div>
+                                <h3>Supabase Database</h3>
+                                <p>Store in a managed PostgreSQL database</p>
+                                <ul className="storage-features">
+                                    <li>Advanced analytics & queries</li>
+                                    <li>Real-time dashboards</li>
+                                    <li>Historical trend analysis</li>
+                                    <li>Multi-tenant support</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {storageChoice && (
+                        <div className="alert success">
+                            ✓ Selected: {storageChoice === 'tenant' ? 'M365 Tenant Storage' : 'Supabase Database'}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Azure App Setup Component
+        function AzureAppSetup({ azureConfig, setAzureConfig }) {
+            return (
+                <div className="onboarding-card">
+                    <h2>Register Azure AD Application</h2>
+                    <p>
+                        Create an Azure AD application to enable API access. We'll use the admin consent flow 
+                        to grant all required permissions automatically.
+                    </p>
+
+                    <div className="setup-instructions">
+                        <h3>📋 Quick Setup Steps</h3>
+
+                        <div className="instruction-step" data-step="1">
+                            <h4>Create App Registration</h4>
+                            <p>Go to Azure Portal → Azure Active Directory → App registrations → New registration</p>
+                            <div className="code-block">Name: M365 Tenant Manager
+Supported account types: Single tenant
+Redirect URI: 
+  Platform: Web
+  URI: {azureConfig.redirectUri}</div>
+                        </div>
+
+                        <div className="instruction-step" data-step="2">
+                            <h4>Create Client Secret</h4>
+                            <p>Go to Certificates & secrets → New client secret → Add a description → Add</p>
+                            <p style={{ color: 'var(--warning)', marginTop: '0.5rem' }}>⚠️ Copy the secret value immediately - it won't be shown again!</p>
+                        </div>
+
+                        <div className="instruction-step" data-step="3">
+                            <h4>Get Application Details</h4>
+                            <p>From the app's Overview page, copy the values below:</p>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Tenant ID (Directory ID)</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                            value={azureConfig.tenantId}
+                            onChange={(e) => setAzureConfig({...azureConfig, tenantId: e.target.value})}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Client ID (Application ID)</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                            value={azureConfig.clientId}
+                            onChange={(e) => setAzureConfig({...azureConfig, clientId: e.target.value})}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Client Secret (Value)</label>
+                        <input
+                            type="password"
+                            className="form-input"
+                            placeholder="Enter the client secret value"
+                            value={azureConfig.clientSecret}
+                            onChange={(e) => setAzureConfig({...azureConfig, clientSecret: e.target.value})}
+                        />
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                            Required to authenticate with Microsoft Graph API
+                        </p>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Redirect URI (automatically configured)</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            value={azureConfig.redirectUri}
+                            onChange={(e) => setAzureConfig({...azureConfig, redirectUri: e.target.value})}
+                            readOnly
+                        />
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                            This must match exactly in your Azure App Registration
+                        </p>
+                    </div>
+
+                    <div className="alert info">
+                        ℹ️ In the next step, you'll grant admin consent for all required API permissions through Microsoft's consent page.
+                    </div>
+                </div>
+            );
+        }
+
+        // Permissions Consent Component
+        function PermissionsConsent({ consentUrl, consentGranted, onGrantConsent, storageChoice }) {
+            const [copySuccess, setCopySuccess] = useState(false);
+
+            const handleCopy = () => {
+                navigator.clipboard.writeText(consentUrl);
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            };
+
+            return (
+                <div className="onboarding-card">
+                    <h2>Grant Admin Consent</h2>
+                    <p>
+                        Click the button below to grant admin consent for the API permissions you added in Step 2.
+                        This will authorize the application to access your Microsoft 365 tenant data.
+                    </p>
+
+                    <div className="alert warning" style={{ marginBottom: '1.5rem' }}>
+                        ⚠️ IMPORTANT: Before clicking the consent button, you MUST manually add the Application permissions listed below in Azure Portal (API permissions → Add a permission → Microsoft Graph → Application permissions). The consent page will only grant permissions that are already configured in the app registration.
+                    </div>
+
+                    {!consentGranted && (
+                        <>
+                            <div className="permissions-list">
+                                <h4>Required Permissions (will be granted automatically):</h4>
+                                {REQUIRED_PERMISSIONS.map((perm, idx) => (
+                                    <div key={idx} className="permission-item">
+                                        <div className="permission-name">{perm}</div>
+                                        <span className="permission-type">Application</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="consent-url-container">
+                                <h4>Admin Consent URL</h4>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                    Click the button below to open the admin consent page. You'll be redirected back here after granting consent.
+                                </p>
+                                <div className="consent-url-box">
+                                    <div className="consent-url">{consentUrl}</div>
+                                    <button 
+                                        className={`copy-btn ${copySuccess ? 'copied' : ''}`}
+                                        onClick={handleCopy}
+                                    >
+                                        {copySuccess ? '✓ Copied!' : 'Copy URL'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="alert warning">
+                                ⚠️ You must be a Global Administrator or Privileged Role Administrator to grant admin consent.
+                            </div>
+
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={onGrantConsent}
+                                style={{ width: '100%', marginTop: '1rem' }}
+                            >
+                                Open Admin Consent Page
+                            </button>
+
+                            <div className="setup-instructions" style={{ marginTop: '2rem' }}>
+                                <h3>📖 What Happens Next?</h3>
+                                <div className="instruction-step" data-step="1">
+                                    <h4>You'll Be Redirected</h4>
+                                    <p>You'll be taken to the Microsoft login page where you'll sign in with admin credentials.</p>
+                                </div>
+                                <div className="instruction-step" data-step="2">
+                                    <h4>Review Permissions</h4>
+                                    <p>You'll see a list of all permissions the application is requesting and can review them.</p>
+                                </div>
+                                <div className="instruction-step" data-step="3">
+                                    <h4>Grant Consent</h4>
+                                    <p>Click "Accept" to grant the permissions. This will grant them for all users in your organization.</p>
+                                </div>
+                                <div className="instruction-step" data-step="4">
+                                    <h4>Return Here</h4>
+                                    <p>You'll be automatically redirected back to this page to complete the setup.</p>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {consentGranted && (
+                        <>
+                            <div className="alert success">
+                                ✓ Admin consent granted successfully! All required permissions have been configured.
+                            </div>
+
+                            {storageChoice === 'supabase' && (
+                                <div className="alert info" style={{ marginTop: '1rem' }}>
+                                    ℹ️ Your data will be stored in Supabase. You'll configure the database connection after setup.
+                                </div>
+                            )}
+
+                            {storageChoice === 'tenant' && (
+                                <div className="alert info" style={{ marginTop: '1rem' }}>
+                                    ℹ️ Your data will be stored in your M365 tenant using SharePoint lists or Azure Storage.
+                                </div>
+                            )}
+
+                            <div className="setup-instructions" style={{ marginTop: '2rem' }}>
+                                <h3>✅ Setup Complete!</h3>
+                                <p style={{ color: 'var(--text-secondary)', marginTop: '1rem', marginBottom: '0' }}>
+                                    Your Azure AD application is configured and all permissions have been granted. 
+                                    Click "Complete Setup" to proceed to the dashboard.
+                                </p>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        // Dashboard Component
+        function Dashboard({ tab, setTab, stats, users, riskyUsers, storageChoice, onFetchData, loading, error }) {
+            return (
+                <div className="dashboard">
+                    <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: '2.5rem', marginBottom: '0.5rem' }}>
+                                Tenant Overview
+                            </h1>
+                            <p style={{ color: 'var(--text-secondary)' }}>
+                                Real-time analytics and security insights • Data stored in: <span style={{ color: 'var(--accent)' }}>
+                                {storageChoice === 'tenant' ? 'M365 Tenant' : 'Supabase Database'}
+                                </span>
+                            </p>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            onClick={onFetchData}
+                            disabled={loading}
+                            style={{ height: 'fit-content' }}
+                        >
+                            {loading ? 'Loading...' : '🔄 Fetch Live Data'}
+                        </button>
+                    </div>
+
+                    {error && (
+                        <div className="alert error" style={{ marginBottom: '1.5rem' }}>
+                            ❌ Error: {error}
+                        </div>
+                    )}
+
+                    {loading && (
+                        <div className="alert info" style={{ marginBottom: '1.5rem' }}>
+                            ⏳ Fetching data from Microsoft Graph API...
+                        </div>
+                    )}
+
+                    <div className="dashboard-nav">
+                        <div className={`nav-tab ${tab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>
+                            Overview
+                        </div>
+                        <div className={`nav-tab ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>
+                            Users & Licenses
+                        </div>
+                        <div className={`nav-tab ${tab === 'security' ? 'active' : ''}`} onClick={() => setTab('security')}>
+                            Security
+                        </div>
+                        <div className={`nav-tab ${tab === 'mailboxes' ? 'active' : ''}`} onClick={() => setTab('mailboxes')}>
+                            Mailboxes
+                        </div>
+                        <div className={`nav-tab ${tab === 'apps' ? 'active' : ''}`} onClick={() => setTab('apps')}>
+                            App Usage
+                        </div>
+                    </div>
+
+                    {tab === 'overview' && <OverviewTab stats={stats} />}
+                    {tab === 'users' && <UsersTab users={users} />}
+                    {tab === 'security' && <SecurityTab stats={stats} riskyUsers={riskyUsers} />}
+                    {tab === 'mailboxes' && <MailboxesTab users={users} />}
+                    {tab === 'apps' && <AppUsageTab />}
+                </div>
+            );
+        }
+
+        // Dashboard Tab Components (same as before)
+        function OverviewTab({ stats }) {
+            return (
+                <>
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-label">Total Users</div>
+                            <div className="stat-value">{stats.totalUsers}</div>
+                            <div className="stat-change positive">↑ 3 this month</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Licensed Users</div>
+                            <div className="stat-value">{stats.licensedUsers}</div>
+                            <div className="stat-change">{stats.unusedLicenses} unused licenses</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Active Users (30d)</div>
+                            <div className="stat-value">{stats.activeUsers}</div>
+                            <div className="stat-change positive">↑ 8% vs last month</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Security Score</div>
+                            <div className="stat-value">{stats.securityScore}%</div>
+                            <div className="stat-change positive">↑ 5% improvement</div>
+                        </div>
+                    </div>
+
+                    <div className="alert warning">
+                        ⚠️ {stats.riskyUsers} risky users detected • {stats.inactiveMailboxes} inactive mailboxes consuming licenses
+                    </div>
+                </>
+            );
+        }
+
+        function UsersTab({ users }) {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [statusFilter, setStatusFilter] = useState('all');
+            const [licenseFilter, setLicenseFilter] = useState('all');
+
+            const filteredUsers = users.filter(user => {
+                const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    user.email.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+                const matchesLicense = licenseFilter === 'all' ||
+                                     (licenseFilter === 'licensed' && user.licensed) ||
+                                     (licenseFilter === 'unlicensed' && !user.licensed);
+                return matchesSearch && matchesStatus && matchesLicense;
+            });
+
+            return (
+                <div className="data-table-container">
+                    <div className="table-header">
+                        <h3>User Management ({filteredUsers.length} of {users.length} users)</h3>
+                        <div className="table-actions">
+                            <button className="icon-btn">Export CSV</button>
+                            <button className="icon-btn">Refresh Data</button>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
+                        <input
+                            type="text"
+                            placeholder="🔍 Search users by name or email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                flex: 1,
+                                padding: '0.5rem 1rem',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)'
+                            }}
+                        />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)'
+                            }}
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active Only</option>
+                            <option value="inactive">Inactive Only</option>
+                        </select>
+                        <select
+                            value={licenseFilter}
+                            onChange={(e) => setLicenseFilter(e.target.value)}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)'
+                            }}
+                        >
+                            <option value="all">All Licenses</option>
+                            <option value="licensed">Licensed Only</option>
+                            <option value="unlicensed">Unlicensed Only</option>
+                        </select>
+                    </div>
+
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Licensed</th>
+                                <th>Last Active</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredUsers.map(user => (
+                                <tr key={user.id}>
+                                    <td>{user.name}</td>
+                                    <td>{user.email}</td>
+                                    <td>
+                                        <span className={`status-badge ${user.licensed ? 'active' : 'inactive'}`}>
+                                            {user.licensed ? 'Yes' : 'No'}
+                                        </span>
+                                    </td>
+                                    <td>{user.lastActive}</td>
+                                    <td>
+                                        <span className={`status-badge ${user.status}`}>
+                                            {user.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button className="action-btn">View Details</button>
+                                        <button className="action-btn danger">Block</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function SecurityTab({ stats, riskyUsers }) {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [riskLevelFilter, setRiskLevelFilter] = useState('all');
+            const [severityFilter, setSeverityFilter] = useState('all');
+
+            // Check if we have real data (even if it's empty)
+            const hasRealData = riskyUsers !== undefined && riskyUsers !== null;
+            const riskyUsersList = riskyUsers || [];
+
+            const filteredRiskyUsers = riskyUsersList.filter(user => {
+                const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    user.email.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesRiskLevel = riskLevelFilter === 'all' ||
+                                       user.riskLevel.toLowerCase() === riskLevelFilter.toLowerCase();
+                return matchesSearch && matchesRiskLevel;
+            });
+
+            const securityRecommendations = [
+                {
+                    id: 1,
+                    title: 'Enable MFA for all users',
+                    severity: 'high',
+                    impact: 'High',
+                    status: 'pending',
+                    description: '15 users do not have MFA enabled'
+                },
+                {
+                    id: 2,
+                    title: 'Review risky sign-ins',
+                    severity: 'critical',
+                    impact: 'Critical',
+                    status: 'pending',
+                    description: '3 users with suspicious activity detected'
+                },
+                {
+                    id: 3,
+                    title: 'Update conditional access policies',
+                    severity: 'medium',
+                    impact: 'Medium',
+                    status: 'in-progress',
+                    description: 'Add location-based access restrictions'
+                },
+                {
+                    id: 4,
+                    title: 'Review admin role assignments',
+                    severity: 'high',
+                    impact: 'High',
+                    status: 'pending',
+                    description: '2 users with unnecessary admin privileges'
+                },
+                {
+                    id: 5,
+                    title: 'Enable password protection',
+                    severity: 'medium',
+                    impact: 'Medium',
+                    status: 'completed',
+                    description: 'Block common and weak passwords'
+                }
+            ];
+
+            return (
+                <>
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-label">Security Score</div>
+                            <div className="stat-value">{stats.securityScore}%</div>
+                            <div className="stat-change positive">↑ 5 points</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Risky Users</div>
+                            <div className="stat-value">{stats.riskyUsers}</div>
+                            <div className="stat-change negative">↑ 2 new alerts</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Non-Compliant Devices</div>
+                            <div className="stat-value">8</div>
+                            <div className="stat-change warning">Needs attention</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Conditional Access Policies</div>
+                            <div className="stat-value">12</div>
+                            <div className="stat-change">5 active</div>
+                        </div>
+                    </div>
+
+                    {stats.riskyUsers > 0 && (
+                        <div className="alert error" style={{ marginBottom: '2rem' }}>
+                            🚨 Critical: {stats.riskyUsers} risky users detected - Review and take action immediately
+                        </div>
+                    )}
+
+                    <div className="data-table-container" style={{ marginBottom: '2rem' }}>
+                        <div className="table-header">
+                            <h3>Risky Users ({filteredRiskyUsers.length} of {riskyUsersList.length})</h3>
+                            <div className="table-actions">
+                                {riskyUsersList.length > 0 && (
+                                    <>
+                                        <button className="icon-btn">Dismiss All</button>
+                                        <button className="icon-btn">Export Report</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {riskyUsersList.length > 0 && (
+                            <div style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
+                                <input
+                                    type="text"
+                                    placeholder="🔍 Search risky users..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.5rem 1rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'var(--bg-secondary)',
+                                        color: 'var(--text-primary)'
+                                    }}
+                                />
+                                <select
+                                    value={riskLevelFilter}
+                                    onChange={(e) => setRiskLevelFilter(e.target.value)}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'var(--bg-secondary)',
+                                        color: 'var(--text-primary)'
+                                    }}
+                                >
+                                    <option value="all">All Risk Levels</option>
+                                    <option value="high">High Only</option>
+                                    <option value="medium">Medium Only</option>
+                                    <option value="low">Low Only</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {riskyUsersList.length === 0 && hasRealData ? (
+                            <div className="alert info" style={{ margin: '1rem' }}>
+                                ✅ Great news! No risky users detected in your tenant. Your security posture is looking good.
+                            </div>
+                        ) : riskyUsersList.length === 0 ? (
+                            <div className="alert warning" style={{ margin: '1rem' }}>
+                                ⏳ Click "Fetch Live Data" to load risky users from your tenant
+                            </div>
+                        ) : (
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Risk Level</th>
+                                        <th>Risk Reason</th>
+                                        <th>Last Risky Sign-In</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {riskyUsersList.map(user => (
+                                        <tr key={user.id}>
+                                            <td>{user.name}</td>
+                                            <td>{user.email}</td>
+                                            <td>
+                                                <span className={`status-badge ${user.riskLevel === 'High' || user.riskLevel === 'high' ? 'inactive' : user.riskLevel === 'Medium' || user.riskLevel === 'medium' ? 'warning' : 'active'}`}>
+                                                    {user.riskLevel}
+                                                </span>
+                                            </td>
+                                            <td>{user.riskReason}</td>
+                                            <td>{user.lastRiskySignIn}</td>
+                                            <td>
+                                                <button className="action-btn">Confirm Safe</button>
+                                                <button className="action-btn danger">Block User</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+
+                    <div className="data-table-container">
+                        <div className="table-header">
+                            <h3>Security Recommendations</h3>
+                            <div className="table-actions">
+                                <button className="icon-btn">Apply All</button>
+                            </div>
+                        </div>
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Recommendation</th>
+                                    <th>Severity</th>
+                                    <th>Impact</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {securityRecommendations.map(rec => (
+                                    <tr key={rec.id}>
+                                        <td>
+                                            <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>{rec.title}</div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{rec.description}</div>
+                                        </td>
+                                        <td>
+                                            <span className={`status-badge ${rec.severity === 'critical' ? 'inactive' : rec.severity === 'high' ? 'warning' : 'active'}`}>
+                                                {rec.severity.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>{rec.impact}</td>
+                                        <td>
+                                            <span className={`status-badge ${rec.status === 'completed' ? 'active' : rec.status === 'in-progress' ? 'warning' : 'inactive'}`}>
+                                                {rec.status === 'in-progress' ? 'In Progress' : rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {rec.status !== 'completed' && (
+                                                <>
+                                                    <button className="action-btn">Apply</button>
+                                                    <button className="action-btn">Dismiss</button>
+                                                </>
+                                            )}
+                                            {rec.status === 'completed' && (
+                                                <button className="action-btn">View Details</button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            );
+        }
+
+        function MailboxesTab({ users }) {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [statusFilter, setStatusFilter] = useState('all');
+
+            const filteredUsers = users.filter(user => {
+                const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    user.email.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            return (
+                <div className="data-table-container">
+                    <div className="table-header">
+                        <h3>Mailbox Management ({filteredUsers.length} of {users.length} mailboxes)</h3>
+                        <div className="table-actions">
+                            <button className="icon-btn">Find Inactive</button>
+                            <button className="icon-btn">Export Report</button>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
+                        <input
+                            type="text"
+                            placeholder="🔍 Search mailboxes by user or email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                flex: 1,
+                                padding: '0.5rem 1rem',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)'
+                            }}
+                        />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)'
+                            }}
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active Only</option>
+                            <option value="inactive">Inactive Only</option>
+                        </select>
+                    </div>
+
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Mailbox Size</th>
+                                <th>Last Active</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredUsers.map(user => (
+                                <tr key={user.id}>
+                                    <td>{user.name}</td>
+                                    <td>{user.email}</td>
+                                    <td>{user.mailboxSize}</td>
+                                    <td>{user.lastActive}</td>
+                                    <td>
+                                        <span className={`status-badge ${user.status}`}>
+                                            {user.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button className="action-btn">Archive</button>
+                                        {user.status === 'inactive' && (
+                                            <button className="action-btn danger">Delete</button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function AppUsageTab() {
+            const appUsage = [
+                { app: 'Microsoft Teams', users: 189, growth: 12, status: 'active' },
+                { app: 'SharePoint Online', users: 156, growth: 5, status: 'active' },
+                { app: 'OneDrive', users: 201, growth: 8, status: 'active' },
+                { app: 'Exchange Online', users: 234, growth: 3, status: 'active' },
+                { app: 'Power BI', users: 45, growth: -2, status: 'warning' },
+            ];
+
+            return (
+                <div className="data-table-container">
+                    <div className="table-header">
+                        <h3>Application Usage (30 days)</h3>
+                        <div className="table-actions">
+                            <button className="icon-btn">Export Data</button>
+                        </div>
+                    </div>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Application</th>
+                                <th>Active Users</th>
+                                <th>Growth</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {appUsage.map((app, idx) => (
+                                <tr key={idx}>
+                                    <td>{app.app}</td>
+                                    <td>{app.users}</td>
+                                    <td>
+                                        <span className={`stat-change ${app.growth >= 0 ? 'positive' : 'negative'}`}>
+                                            {app.growth >= 0 ? '↑' : '↓'} {Math.abs(app.growth)}%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span className={`status-badge ${app.status}`}>
+                                            {app.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        // Render App
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
