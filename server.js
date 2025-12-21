@@ -108,13 +108,31 @@ app.get('/api/graph/*', async (req, res) => {
             }
         });
 
-        const graphData = await graphResponse.json();
+        // Check if this is a report endpoint that returns CSV/text
+        const contentType = graphResponse.headers.get('content-type');
+        const isTextResponse = contentType && (contentType.includes('text/csv') || contentType.includes('text/plain') || contentType.includes('application/octet-stream'));
 
-        if (!graphResponse.ok) {
-            return res.status(graphResponse.status).json(graphData);
+        if (isTextResponse || graphPath.includes('/reports/')) {
+            // Return text response for reports
+            const textData = await graphResponse.text();
+
+            if (!graphResponse.ok) {
+                return res.status(graphResponse.status).send(textData);
+            }
+
+            // Set content type to text/plain and send the CSV
+            res.setHeader('Content-Type', 'text/plain');
+            res.send(textData);
+        } else {
+            // Return JSON for regular endpoints
+            const graphData = await graphResponse.json();
+
+            if (!graphResponse.ok) {
+                return res.status(graphResponse.status).json(graphData);
+            }
+
+            res.json(graphData);
         }
-
-        res.json(graphData);
     } catch (error) {
         console.error('Error calling Graph API:', error);
         res.status(500).json({ error: error.message });
