@@ -11,7 +11,9 @@
       "Bash(taskkill:*)",
       "Bash(cmd /c \"taskkill /F /PID 6744\")",
       "Bash(cmd /c \"taskkill /F /PID 41060\")",
-      "Bash(node test_api_response.js:*)"
+      "Bash(node test_api_response.js:*)",
+      "Bash(cd:*)",
+      "Bash(cat:*)"
     ]
   }
 }
