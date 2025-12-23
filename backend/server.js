@@ -12,6 +12,7 @@ const { optionalAuth } = require('./middleware/auth');
 const tenantsRoutes = require('./routes/tenants');
 const azureRoutes = require('./routes/azure');
 const syncRoutes = require('./routes/sync');
+const dataRoutes = require('./routes/data');
 
 // Initialize Express app
 const app = express();
@@ -78,6 +79,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/tenants', tenantsRoutes);
 app.use('/api/azure', azureRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/data', dataRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -118,26 +120,39 @@ app.get('/api', (req, res) => {
 });
 
 // ============================================
-// STATIC FILES (Frontend)
-// ============================================
-
-// Serve static files from parent directory (temporary during migration)
-app.use(express.static(path.join(__dirname, '..')));
-
-// Serve the HTML file
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'm365-tenant-manager-v2.html'));
-});
-
-// ============================================
 // ERROR HANDLING
 // ============================================
 
-// 404 handler
-app.use(notFoundHandler);
+// 404 handler for API routes only
+app.use('/api/*', notFoundHandler);
 
 // Global error handler
 app.use(errorHandler);
+
+// ============================================
+// STATIC FILES (React Frontend)
+// ============================================
+
+// Serve static files from React build folder (only in production)
+if (process.env.NODE_ENV === 'production') {
+  const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
+  app.use(express.static(frontendBuildPath));
+
+  // All non-API routes serve the React app (SPA routing)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+} else {
+  // In development, just show a message for non-API routes
+  app.get('/', (req, res) => {
+    res.json({
+      message: 'M365 Tenant Manager API',
+      status: 'Backend running in development mode',
+      frontend: 'Run frontend separately with: cd frontend && npm start',
+      api_docs: '/api'
+    });
+  });
+}
 
 // ============================================
 // START SERVER

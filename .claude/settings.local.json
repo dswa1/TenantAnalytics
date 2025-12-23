@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(npm start)",
+      "Bash(timeout /t 5)",
+      "Bash(timeout /t 3)",
+      "Bash(timeout /t:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c \"taskkill /F /PID 6744\")",
+      "Bash(cmd /c \"taskkill /F /PID 41060\")",
+      "Bash(node test_api_response.js:*)"
+    ]
+  }
+}

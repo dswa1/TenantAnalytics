@@ -65,13 +65,29 @@ const authRateLimiter = rateLimit({
  */
 const syncRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
+  // Use a key that includes the tier so upgrading resets the limit
+  keyGenerator: (req) => {
+    const tier = req.profile?.subscription_tier || 'free';
+    const key = `${req.user?.id}-${tier}`;
+    console.log('[SYNC RATE LIMITER] Generated key:', key);
+    return key;
+  },
+  // Skip rate limiting for enterprise tier (they have high enough limits)
+  skip: (req) => {
+    const tier = req.profile?.subscription_tier;
+    console.log('[SYNC RATE LIMITER] Checking skip for tier:', tier);
+    // Skip rate limiting for enterprise tier as a workaround
+    return tier === 'enterprise';
+  },
   max: async (req) => {
     if (req.profile) {
       const tier = req.profile.subscription_tier;
+      console.log('[SYNC RATE LIMITER] User:', req.user?.id, 'Tier:', tier);
       // Free: 1 sync/hour, Pro: 10 syncs/hour, Enterprise: 60 syncs/hour
       const limits = { free: 1, pro: 10, enterprise: 60 };
       return limits[tier] || limits.free;
     }
+    console.log('[SYNC RATE LIMITER] No profile found for user:', req.user?.id);
     return 1;
   },
   message: {

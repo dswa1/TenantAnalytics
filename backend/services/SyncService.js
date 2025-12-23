@@ -57,6 +57,8 @@ class SyncService {
    */
   async checkSyncFrequency(tenantId) {
     try {
+      console.log('[CHECK SYNC FREQUENCY] Checking for tenant:', tenantId);
+
       // Get tenant subscription tier
       const { data: tenant } = await supabase
         .from('tenants')
@@ -64,7 +66,11 @@ class SyncService {
         .eq('id', tenantId)
         .single();
 
-      if (!tenant) return false;
+      console.log('[CHECK SYNC FREQUENCY] Tenant tier:', tenant?.subscription_tier);
+      if (!tenant) {
+        console.log('[CHECK SYNC FREQUENCY] No tenant found');
+        return false;
+      }
 
       // Get tier limits
       const { data: limits } = await supabase
@@ -73,9 +79,20 @@ class SyncService {
         .eq('tier', tenant.subscription_tier)
         .single();
 
-      if (!limits) return false;
+      console.log('[CHECK SYNC FREQUENCY] Limits:', limits);
+      if (!limits) {
+        console.log('[CHECK SYNC FREQUENCY] No limits found for tier');
+        return false;
+      }
 
       const frequencyHours = limits.sync_frequency_hours;
+      console.log('[CHECK SYNC FREQUENCY] Frequency hours required:', frequencyHours);
+
+      // If frequency is 0, allow unlimited syncs (enterprise tier)
+      if (frequencyHours === 0) {
+        console.log('[CHECK SYNC FREQUENCY] Unlimited syncs allowed (enterprise tier)');
+        return true;
+      }
 
       // Check last sync time
       const { data: lastSync } = await supabase
@@ -87,10 +104,17 @@ class SyncService {
         .limit(1)
         .single();
 
-      if (!lastSync) return true; // First sync
+      console.log('[CHECK SYNC FREQUENCY] Last sync:', lastSync);
+      if (!lastSync) {
+        console.log('[CHECK SYNC FREQUENCY] First sync - allowing');
+        return true; // First sync
+      }
 
       const lastSyncTime = new Date(lastSync.started_at);
       const timeSinceLastSync = (Date.now() - lastSyncTime) / 1000 / 60 / 60; // hours
+
+      console.log('[CHECK SYNC FREQUENCY] Hours since last sync:', timeSinceLastSync);
+      console.log('[CHECK SYNC FREQUENCY] Can sync:', timeSinceLastSync >= frequencyHours);
 
       return timeSinceLastSync >= frequencyHours;
     } catch (error) {
@@ -378,11 +402,198 @@ class SyncService {
   }
 
   /**
-   * Sync mailboxes from Microsoft Graph
+   * Sync mailboxes from Microsoft Graph Reports API
+   * Uses the getMailboxUsageDetail report which provides actual storage and item counts
    */
   async syncMailboxes(syncId, tenantId, graphClient) {
-    // Similar implementation to syncUsers
-    return { added: 0, updated: 0, deleted: 0 };
+    try {
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('tenant_id')
+        .eq('id', tenantId)
+        .single();
+
+      if (!tenant) {
+        throw new Error(`Tenant not found: ${tenantId}`);
+      }
+
+      const azureTenantId = tenant.tenant_id;
+
+      console.log('[MAILBOX SYNC] Fetching mailbox usage report from Graph API...');
+
+      // Fetch mailbox usage report using Graph SDK
+      // Returns a stream/buffer with CSV data
+      const stream = await graphClient
+        .api('/reports/getMailboxUsageDetail(period=\'D7\')')
+        .get();
+
+      console.log('[MAILBOX SYNC] Stream type:', typeof stream);
+      console.log('[MAILBOX SYNC] Stream constructor:', stream?.constructor?.name);
+
+      // Convert stream/buffer to string
+      let csvText;
+
+      // Handle ReadableStream (Node.js fetch API or Web Streams API)
+      if (stream && stream.constructor && stream.constructor.name === 'ReadableStream') {
+        console.log('[MAILBOX SYNC] Converting ReadableStream to text...');
+        const reader = stream.getReader();
+        const chunks = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+
+        // Combine chunks and convert to string
+        const buffer = Buffer.concat(chunks);
+        csvText = buffer.toString('utf-8');
+        console.log('[MAILBOX SYNC] ReadableStream converted to text');
+      } else if (typeof stream === 'string') {
+        csvText = stream;
+        console.log('[MAILBOX SYNC] Used string conversion');
+      } else if (Buffer.isBuffer(stream)) {
+        csvText = stream.toString('utf-8');
+        console.log('[MAILBOX SYNC] Used Buffer.toString()');
+      } else if (stream && typeof stream.text === 'function') {
+        csvText = await stream.text();
+        console.log('[MAILBOX SYNC] Used stream.text()');
+      } else if (stream && stream.value) {
+        // Might be wrapped in a value property
+        csvText = stream.value;
+        console.log('[MAILBOX SYNC] Used stream.value');
+      } else {
+        // Last resort - try to convert to string
+        csvText = String(stream);
+        console.log('[MAILBOX SYNC] Used String() conversion');
+      }
+
+      console.log('[MAILBOX SYNC] CSV text length:', csvText?.length);
+      console.log('[MAILBOX SYNC] First 200 chars:', csvText?.substring(0, 200));
+
+      // Parse CSV response
+      const lines = csvText.split('\n');
+      if (lines.length <= 1) {
+        console.log('[MAILBOX SYNC] No mailbox data in report');
+        return { added: 0, updated: 0, deleted: 0 };
+      }
+
+      // Parse CSV headers (remove BOM and quotes)
+      const headers = lines[0].split(',').map(h =>
+        h.trim().replace(/"/g, '').replace(/^\uFEFF/, '')
+      );
+
+      console.log('[MAILBOX SYNC] CSV Headers:', headers);
+
+      // Find column indices
+      const upnIndex = headers.findIndex(h => h.toLowerCase().includes('user principal name'));
+      const displayNameIndex = headers.findIndex(h => h.toLowerCase() === 'display name');
+      const createdDateIndex = headers.findIndex(h => h.toLowerCase().includes('created date'));
+      const storageUsedIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('storage used') && h.toLowerCase().includes('byte')
+      );
+      const itemCountIndex = headers.findIndex(h => h.toLowerCase() === 'item count');
+
+      console.log('[MAILBOX SYNC] Column indices - UPN:', upnIndex, 'Display Name:', displayNameIndex,
+                  'Created Date:', createdDateIndex, 'Storage:', storageUsedIndex, 'Item Count:', itemCountIndex);
+
+      if (upnIndex === -1 || storageUsedIndex === -1 || displayNameIndex === -1) {
+        throw new Error('Required columns not found in mailbox usage report');
+      }
+
+      // Get existing mailboxes from database
+      const { data: existingMailboxes } = await supabase
+        .from('mailboxes')
+        .select('*')
+        .eq('tenant_id', azureTenantId);
+
+      const existingMap = new Map(existingMailboxes?.map(m => [m.user_id, m]) || []);
+      let added = 0;
+      let updated = 0;
+
+      // Get users to map by User Principal Name
+      const { data: users } = await supabase
+        .from('users')
+        .select('user_id, display_name, user_principal_name')
+        .eq('tenant_id', azureTenantId);
+
+      // Create map by UPN (case-insensitive)
+      const userMap = new Map();
+      users?.forEach(u => {
+        if (u.user_principal_name) {
+          userMap.set(u.user_principal_name.toLowerCase(), u);
+        }
+      });
+
+      // Parse each CSV row
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+
+        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+
+        const upn = values[upnIndex] || '';
+        const displayName = values[displayNameIndex] || '';
+        const storageUsedBytes = parseInt(values[storageUsedIndex]) || 0;
+        const itemCount = parseInt(values[itemCountIndex]) || 0;
+
+        if (!upn || !displayName) continue;
+
+        // Match user by User Principal Name
+        const user = userMap.get(upn.toLowerCase());
+
+        if (!user) {
+          console.log(`[MAILBOX SYNC] User not found for UPN: ${upn}, skipping`);
+          continue;
+        }
+
+        const mailboxData = {
+          tenant_id: azureTenantId,
+          user_id: user.user_id,
+          user_principal_name: user.user_principal_name,
+          storage_used_bytes: storageUsedBytes,
+          item_count: itemCount,
+          updated_at: new Date().toISOString()
+        };
+
+        console.log(`[MAILBOX SYNC] Processing mailbox for UPN: ${upn}, User ID: ${user.user_id}, Storage: ${storageUsedBytes}, Items: ${itemCount}`);
+
+        const existing = existingMap.get(user.user_id);
+
+        if (!existing) {
+          // Insert new mailbox
+          const { data: insertedData, error: insertError } = await supabase.from('mailboxes').insert(mailboxData);
+          if (insertError) {
+            console.error(`[MAILBOX SYNC] Insert error for ${upn}:`, insertError);
+          } else {
+            console.log(`[MAILBOX SYNC] Inserted mailbox for ${upn}`);
+            await this.recordChange(syncId, tenantId, 'mailboxes', user.user_id, 'added', null, mailboxData);
+            added++;
+          }
+        } else {
+          // Update if data changed
+          if (existing.item_count !== itemCount || existing.storage_used_bytes !== storageUsedBytes) {
+            const { error: updateError } = await supabase
+              .from('mailboxes')
+              .update(mailboxData)
+              .eq('user_id', user.user_id)
+              .eq('tenant_id', azureTenantId);
+
+            if (updateError) {
+              console.error(`[MAILBOX SYNC] Update error for ${upn}:`, updateError);
+            } else {
+              await this.recordChange(syncId, tenantId, 'mailboxes', user.user_id, 'updated', existing, mailboxData);
+              updated++;
+            }
+          }
+        }
+      }
+
+      console.log(`[MAILBOX SYNC] Completed: ${added} added, ${updated} updated`);
+      return { added, updated, deleted: 0 };
+    } catch (error) {
+      console.error('[MAILBOX SYNC] Error:', error);
+      throw error;
+    }
   }
 
   /**

@@ -176,11 +176,11 @@ router.get('/consent-callback', asyncHandler(async (req, res) => {
   const { admin_consent, tenant: azureTenantId, state, error: consentError } = req.query;
 
   if (consentError) {
-    return res.redirect(`${process.env.FRONTEND_URL}/onboarding/consent-failed?error=${encodeURIComponent(consentError)}`);
+    return res.redirect(`${process.env.FRONTEND_URL}/onboarding?consent=failed&error=${encodeURIComponent(consentError)}`);
   }
 
   if (admin_consent !== 'True') {
-    return res.redirect(`${process.env.FRONTEND_URL}/onboarding/consent-denied`);
+    return res.redirect(`${process.env.FRONTEND_URL}/onboarding?consent=denied`);
   }
 
   try {
@@ -203,11 +203,11 @@ router.get('/consent-callback', asyncHandler(async (req, res) => {
       throw updateError;
     }
 
-    // Redirect to success page
-    res.redirect(`${process.env.FRONTEND_URL}/onboarding/consent-success?tenant_id=${tenant_id}`);
+    // Redirect to onboarding page with success parameter
+    res.redirect(`${process.env.FRONTEND_URL}/onboarding?consent=success&tenant_id=${tenant_id}`);
   } catch (error) {
     console.error('Consent callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/onboarding/consent-failed?error=${encodeURIComponent('Failed to process consent')}`);
+    res.redirect(`${process.env.FRONTEND_URL}/onboarding?consent=failed&error=${encodeURIComponent('Failed to process consent')}`);
   }
 }));
 
