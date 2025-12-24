@@ -7,7 +7,8 @@
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
     "test": "jest",
-    "generate-key": "node -e \"console.log('ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))\""
+    "generate-key": "node -e \"console.log('ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))\"",
+    "build": "cd frontend && npm install && npm run build"
   },
   "keywords": [
     "microsoft365",
