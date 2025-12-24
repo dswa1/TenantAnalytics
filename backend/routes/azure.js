@@ -125,6 +125,46 @@ router.get('/credentials', authenticate, setTenantContext, asyncHandler(async (r
 }));
 
 /**
+ * GET /api/azure/status
+ * Get Azure setup and consent status for a tenant
+ */
+router.get('/status', authenticate, setTenantContext, asyncHandler(async (req, res) => {
+  const { data: credentials, error } = await supabase
+    .from('azure_app_credentials')
+    .select('id, client_id, tenant_id_azure, consent_granted, consent_granted_at, is_valid, last_validated, created_at')
+    .eq('tenant_id', req.tenant.id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return res.json({
+        success: true,
+        status: {
+          configured: false,
+          admin_consent_granted: false,
+          is_valid: false,
+          setup_required: true
+        }
+      });
+    }
+    throw new Error(`Failed to fetch status: ${error.message}`);
+  }
+
+  res.json({
+    success: true,
+    status: {
+      configured: true,
+      admin_consent_granted: credentials.consent_granted || false,
+      is_valid: credentials.is_valid || false,
+      last_validated: credentials.last_validated,
+      consent_granted_at: credentials.consent_granted_at,
+      client_id: credentials.client_id,
+      tenant_id_azure: credentials.tenant_id_azure
+    }
+  });
+}));
+
+/**
  * GET /api/azure/consent-url
  * Generate Microsoft admin consent URL
  */
